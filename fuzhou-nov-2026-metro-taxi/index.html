@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>福州4天3晚 · 高德地图攻略</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{--green:#173F3A;--mint:#E8F3EC;--orange:#E46C45;--ink:#253330;--muted:#66716E;--line:#D9E3DC}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink)}
+  #app{display:flex;height:100%}
+  #side{width:370px;min-width:330px;overflow-y:auto;background:#F6F8F6;border-right:1px solid var(--line);padding:14px}
+  #map{flex:1}
+  h1{font-size:17px;color:var(--green);margin:0 0 4px}
+  .sub{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .bar{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:#fff;border-radius:16px;padding:3px 11px;font-size:12px;cursor:pointer;user-select:none}
+  .chip.on{background:var(--green);color:#fff;border-color:var(--green)}
+  .sec{font-size:12px;color:var(--muted);margin:12px 0 4px;font-weight:700;border-bottom:1px dashed var(--line);padding-bottom:2px}
+  .item{background:#fff;border:1px solid var(--line);border-left:4px solid var(--orange);border-radius:8px;padding:7px 9px;margin-bottom:7px;font-size:12.5px;cursor:pointer}
+  .item:hover{box-shadow:0 1px 6px rgba(0,0,0,.1)}
+  .item b{font-size:12.5px;color:var(--green)}
+  .item .meta{color:var(--muted);font-size:11px;margin-top:2px}
+  .item .time{display:inline-block;background:var(--mint);color:var(--green);border-radius:4px;padding:0 6px;font-size:11px;margin-right:4px}
+  .item.fri{border-left-color:#C0392B}.item.sat{border-left-color:var(--orange)}.item.sun{border-left-color:#2BA245}
+  .item.food{border-left-color:#D4A017}
+  .item.miss{border-left-color:#999;opacity:.75;cursor:default}
+  .amap{display:inline-block;background:#1A66C4;color:#fff;text-decoration:none;border-radius:5px;padding:2px 8px;font-size:11px;margin-top:3px}
+  .leaflet-popup-content{font-size:12.5px;line-height:1.55;margin:10px 14px}
+  .leaflet-popup-content b{color:var(--green);font-size:13.5px}
+  .pp .row{margin:2px 0;color:#444}
+  .pp .tagline{color:var(--muted);font-size:11.5px}
+  .pp a{display:inline-block;background:#1A66C4;color:#fff;text-decoration:none;border-radius:5px;padding:2px 9px;font-size:12px;margin:4px 6px 0 0}
+  .pp a.nav{background:#0E8A5F}
+  .keyfacts{background:#FFF7E8;border:1px solid #F0D9A8;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px}
+  .keyfacts b{color:#B0562F}
+  .namelbl{background:none;border:none;box-shadow:none;font-size:11px;font-weight:600;color:#173F3A;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff;padding:0 0 0 4px}
+  .seglbl{background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.15);font-size:11px;font-weight:600;color:#253330;padding:2px 7px;white-space:nowrap}
+  .legend{font-size:11px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px;margin-top:6px;line-height:1.9}
+  .legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin:0 3px 0 6px;vertical-align:middle}
+  /* 移动端布局统一由下方 media 块控制 */
+
+  #search{width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;margin-bottom:8px;outline:none}
+  #search:focus{border-color:var(--green)}
+  .item.done{opacity:.5;text-decoration:line-through}
+  .item .donebox{float:right;font-size:13px;cursor:pointer;text-decoration:none}
+  .item .nowbadge{background:#C0392B;color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px}
+  .item .nextbadge{background:#D9A441;color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px}
+  .item .warnbadge{background:#B0562F;color:#fff;border-radius:4px;padding:0 5px;font-size:10px;margin-left:4px}
+  .nowring{animation:pulse 1.6s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(192,57,43,.55)}70%{box-shadow:0 0 0 12px rgba(192,57,43,0)}100%{box-shadow:0 0 0 0 rgba(192,57,43,0)}}
+  .cluster{background:#D4A017;color:#fff;border-radius:14px;padding:3px 9px;font-size:11.5px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.3);white-space:nowrap;border:2px solid #fff}
+  #sideToggle{display:none;position:fixed;right:10px;bottom:10px;z-index:1200;background:var(--green);color:#fff;border:none;border-radius:22px;padding:9px 16px;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  #clearDone{border:1px solid var(--line);background:#fff;border-radius:8px;padding:4px 10px;font-size:11.5px;cursor:pointer;margin-bottom:8px}
+  .hint{background:#FDECEA;border:1px solid #F2C4BC;border-radius:8px;padding:6px 9px;font-size:11.5px;color:#8C2F1F;margin-bottom:8px}
+  @media (max-width:760px){
+    #app{flex-direction:column;height:100%}
+    #map{order:1;flex:1 1 auto;min-height:0;height:auto}
+    #side{order:2;width:100%;max-height:46vh;min-height:0;overflow-y:auto;flex:0 1 46vh;position:relative;z-index:1300;transition:flex-basis .25s,height .25s}
+    #side.collapsed{flex-basis:0;height:0;max-height:0;padding:0;overflow:hidden}
+    #sideToggle{display:block}
+    .leaflet-popup{margin-bottom:8px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="side">
+    <h1>福州4天3晚 · 高德地图攻略</h1>
+    <div class="sub">11/16–19 · 福州南进出 · 全季／香格里拉／全季。沿用附件景点和美食收藏，新增交通以高德实时导航为准。</div>
+    <input id="search" type="search" placeholder="🔍 搜景点/码头/地铁站/店名/品类/区域…">
+    <div class="hint" id="dateHint" style="display:none"></div>
+    <div class="bar" id="days">
+      <span class="chip on" data-d="all">全部</span>
+      <span class="chip" data-d="fri">11/16 周一</span>
+      <span class="chip" data-d="sat">11/17 周二</span>
+      <span class="chip" data-d="sun">11/18 周三</span>
+      <span class="chip" data-d="thu">11/19 周四</span>
+    </div>
+    <div class="bar" id="cats">
+      <span class="chip on" data-c="route">行程点</span>
+      <span class="chip on" data-c="food">美食</span>
+      <span class="chip" data-c="ferry">游船示意（可选）</span>
+    </div>
+    <div class="bar" id="grps">
+      <span class="chip on" data-g="sfq">三坊七巷·东街口</span>
+      <span class="chip on" data-g="dm">达明·鼓西</span>
+      <span class="chip on" data-g="sxh">上下杭·达道</span>
+      <span class="chip on" data-g="yts">烟台山</span>
+      <span class="chip on" data-g="cs">仓山</span>
+      <span class="chip on" data-g="ja">晋安·台江</span>
+      <span class="chip on" data-g="far">远端备用</span>
+    </div>
+    <button id="clearDone">✕ 清除完成状态</button>
+    <div class="hint" style="display:block">16日晚东街口火锅→烟台山，18日仍逛上下杭。出发前确认鼓山接驳、西湖游船。长距离优先地铁，短段打车减少步行和折返；景区内按体力随时折返。高德时间为路线估算，接驾、前台和等位另留缓冲。<br><a href="https://www.amap.com/place/B0KDVHTSLB" target="_blank">朱富贵三坊七巷店</a> · <a href="https://news.fznews.com.cn/fzyw/20260903/877u0G8m6S.shtml" target="_blank">鼓山专线</a> · <a href="https://www.fuzhou.gov.cn/zgfzhd/znhd/scxjsj/qt/202512/t20251222_5260357.htm" target="_blank">福舟悠游</a> · <a href="https://www.12306.cn/" target="_blank">铁路12306</a></div>
+    <div id="offline" style="display:none"><b>地图暂未加载，仍可查看行程：</b><p>11/16 17:04 🚄 福州南站 · 到达｜1号线往象峰7站到白湖亭B口。高德约8.57公里／30分钟，含步行635米，出白湖亭站后约337米到酒店。 从下车算起另留铁路出站、找地铁、候车时间；约17:50–18:05到酒店大堂。</p><p>11/16 17:50–18:30 🏨 全季白湖亭 · 入住放行李｜前台登记、上楼放箱、再出门合计预留15–25分钟；顺利时18:15–18:25离开酒店。 问前台能否将大箱从17日退房寄存到18日再次入住；隔夜寄存未确认。</p><p>11/16 18:50–20:30 🍲 朱富贵火锅（三坊七巷店）｜白湖亭乘1号线往象峰6站到东街口。高德约8.48公里／32分钟（步行686米）；含候车、找D口和上大洋百货5楼，留35–45分钟。高德参考人均¥106、评分4.8、11:00–次日05:00。 约18:50–19:10到店；19:00到店时可按等位15–25分钟、用餐65–75分钟估算，理想用餐19:15–20:30。排队久就缩短夜游，不用赶着吃。</p><p>11/16 21:00–21:40 🌆 烟台山夜游 · 亭下路与仓前路交叉口｜从朱富贵打车到亭下路与仓前路交叉口，高德约7.54公里／25分钟，含接驾留30–40分钟。 沿仓前路看江景，晚到只走20–30分钟。城区通常22:00结束景观照明。返全季打车约4.15公里／15分钟，含等车留20–30分钟，约21:50–22:10到。</p><p>11/17 09:00–10:05 🏨 福州香格里拉 · 寄存｜白湖亭B口乘1号线往象峰5站到南门兜，再步行到香格里拉。高德分段测算：全季到白湖亭B口约337米，南门兜站选靠酒店一侧出口，站点到酒店约385米；全程留35–50分钟。 站内步行及出口以现场为准。到前台寄存另留10–15分钟，不等房。</p><p>11/17 10:15–12:25 🏛 三坊七巷｜香格里拉打车到三坊七巷，高德约2.15公里／12分钟，含接驾留18–25分钟。下车后逛南后街、衣锦坊、黄巷。 11:45–12:25午饭，选同利肉燕或永和鱼丸；午饭晚了就缩短西禅寺。</p><p>11/17 13:10–14:00 🛕 西禅古寺｜从三坊七巷坐128路，高德约3.84公里／40分钟，含步行约890米；计划留40–50分钟。 寺内留35–45分钟，看黄墙和报恩塔；晚到就缩短或跳过。</p><p>11/17 14:20–15:10 🏨 福州香格里拉 · 入住｜西禅寺到香格里拉建议打车，高德约3.62公里／11分钟，含接驾留20–30分钟。酒店14:00起入住。 柜台登记、上楼、补水留25–35分钟。争取15:00–15:10出门。</p><p>11/17 15:40–16:05 🎫 鼓山站A口 · 下院游客中心｜南门兜乘2号线往洋里6站，鼓山A口出。高德约8.87公里／32分钟，计划留35–45分钟。 到下院先核实落日专线上、下行班次。若赶不上日落或下山没把握，就回东街口吃饭。</p><p>11/17 16:25–17:30 🌇 鼓山大榕树观景台｜下院到观景台高德按盘山公路测得约9.39公里／20分钟（驾车，不是景交班次）；景交候车和上山留35–55分钟。 约17:12日落，17:30左右开始下山，按当天班次候车。</p><p>11/17 19:15–20:45 🍢 达明美食街 · 晚餐｜景交下到鼓山下院后，2号线往苏洋到前屿，换4号线往半洲到东街口，再去达明。高德约11.99公里／45分钟，含步行约870米。另留景交下山和进站时间。 预计19:15–19:45开吃。达明回香格里拉打车约3.19公里／15分钟，含接驾留20–30分钟。</p><p>11/18 09:30–09:50 🎒 福州香格里拉 · 退房｜退房、取包留10–20分钟。轻装就直接去西湖。 如需先放大箱：从南门兜乘1号线往三江口5站到白湖亭，再去全季放箱；全季到上下杭打车约5.30公里／17分钟，含接驾留25–35分钟。放掉西湖游船。</p><p>11/18 10:10–11:30 🌳 西湖公园 · 游船一码头｜香格里拉到西湖一码头打车约5.55公里／19分钟，含接驾留25–35分钟；1路公交约3.43公里／33分钟。 只有确认当天西湖→黎明湖单程船且有票才坐。11:30还没上船就直接打车去上下杭。</p><p>11/18 12:00–16:30 🏘 上下杭历史文化街区｜从西湖打车到上下杭约6.57公里／23分钟，含接驾留30–40分钟。若坐船，黎明湖下船后打车到上下杭约3.06公里／15分钟，含接驾留20–30分钟。 不坐船约12:00–12:15开始午饭；坐船按下船时间顺延。午饭后逛三通桥、三捷河和会馆。</p><p>11/18 17:00–18:30 🏨 全季酒店（福州白湖亭地铁站店）｜从上下杭打车回白湖亭全季，高德约6.64公里／21分钟，含接驾留30–40分钟。 到全季取箱、办理入住留15–25分钟，再到附近吃饭；想在上下杭吃晚饭也可以吃完再回来。</p><p>11/19 09:55–10:10 🏨 全季白湖亭 · 出发｜退房留15分钟，10:10左右从酒店出发。1号线往三江口7站到福州火车南站，高德约8.57公里／30分钟，含步行635米。 另留候车、找铁路进站层及安检的时间，11:00前到铁路进站口。</p><p>11/19 11:00–12:00 🚄 福州南站 · 返深｜12:00发车回深圳，具体以票面为准。 通过安检后找检票口，有空再买午饭带上车。</p></div><div id="list"></div>
+    <div class="legend">
+      路线：<i style="background:#C0392B"></i>11/16<i style="background:#E46C45"></i>11/17<i style="background:#2BA245"></i>11/18<i style="background:#8051A1"></i>11/19<i style="background:#1E90FF"></i>游船航线(截图整理)<br>
+      美食分组(颜色)：🟠三坊七巷·东街口 🟤达明·鼓西 🟡上下杭·达道 🔵烟台山 🟣仓山 🟢晋安·台江 ⚪远端<br>图标=品类：🥟肉燕 🐟鱼丸 🍜捞化/面 🥣锅边 🥜花生汤 🍮糖水甜汤 🍧冰饭 🍗炸鸡 🥩烤肉 🍖蹄膀 🍲火锅闽菜 🦐海鲜 🐂牛肉 🍣寿司 🧋🍵茶饮 🌭香肠 🏮元宵 🥞饼 🦆姜母鸭 🍢小吃<br>缩小地图时美食按区域聚合，放大后展开单店
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+<button id="sideToggle">☰ 行程列表</button>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// 坐标=高德GCJ-02，底图=高德瓦片
+// 行程点 [day, time, name, lng, lat, emoji, info, tip]
+const route=[
+['fri',"17:04", "福州南站 · 到达", 119.391728, 25.986348, "🚄", "1号线往象峰7站到白湖亭B口。高德约8.57公里／30分钟，含步行635米，出白湖亭站后约337米到酒店。", "从下车算起另留铁路出站、找地铁、候车时间；约17:50–18:05到酒店大堂。"],
+['fri',"17:50–18:30", "全季白湖亭 · 入住放行李", 119.332929, 26.026476, "🏨", "前台登记、上楼放箱、再出门合计预留15–25分钟；顺利时18:15–18:25离开酒店。", "问前台能否将大箱从17日退房寄存到18日再次入住；隔夜寄存未确认。"],
+['fri',"18:50–20:30", "朱富贵火锅（三坊七巷店）", 119.300316, 26.084255, "🍲", "白湖亭乘1号线往象峰6站到东街口。高德约8.48公里／32分钟（步行686米）；含候车、找D口和上大洋百货5楼，留35–45分钟。高德参考人均¥106、评分4.8、11:00–次日05:00。", "约18:50–19:10到店；19:00到店时可按等位15–25分钟、用餐65–75分钟估算，理想用餐19:15–20:30。排队久就缩短夜游，不用赶着吃。"],
+['fri',"21:00–21:40", "烟台山夜游 · 亭下路与仓前路交叉口", 119.310259, 26.044417, "🌆", "从朱富贵打车到亭下路与仓前路交叉口，高德约7.54公里／25分钟，含接驾留30–40分钟。", "沿仓前路看江景，晚到只走20–30分钟。城区通常22:00结束景观照明。返全季打车约4.15公里／15分钟，含等车留20–30分钟，约21:50–22:10到。"],
+['sat',"09:00–10:05", "福州香格里拉 · 寄存", 119.306145, 26.074321, "🏨", "白湖亭B口乘1号线往象峰5站到南门兜，再步行到香格里拉。高德分段测算：全季到白湖亭B口约337米，南门兜站选靠酒店一侧出口，站点到酒店约385米；全程留35–50分钟。", "站内步行及出口以现场为准。到前台寄存另留10–15分钟，不等房。"],
+['sat',"10:15–12:25", "三坊七巷", 119.296623, 26.081958, "🏛", "香格里拉打车到三坊七巷，高德约2.15公里／12分钟，含接驾留18–25分钟。下车后逛南后街、衣锦坊、黄巷。", "11:45–12:25午饭，选同利肉燕或永和鱼丸；午饭晚了就缩短西禅寺。"],
+['sat',"13:10–14:00", "西禅古寺", 119.276006, 26.071711, "🛕", "从三坊七巷坐128路，高德约3.84公里／40分钟，含步行约890米；计划留40–50分钟。", "寺内留35–45分钟，看黄墙和报恩塔；晚到就缩短或跳过。"],
+['sat',"14:20–15:10", "福州香格里拉 · 入住", 119.306145, 26.074321, "🏨", "西禅寺到香格里拉建议打车，高德约3.62公里／11分钟，含接驾留20–30分钟。酒店14:00起入住。", "柜台登记、上楼、补水留25–35分钟。争取15:00–15:10出门。"],
+['sat',"15:40–16:05", "鼓山站A口 · 下院游客中心", 119.375873, 26.052939, "🎫", "南门兜乘2号线往洋里6站，鼓山A口出。高德约8.87公里／32分钟，计划留35–45分钟。", "到下院先核实落日专线上、下行班次。若赶不上日落或下山没把握，就回东街口吃饭。"],
+['sat',"16:25–17:30", "鼓山大榕树观景台", 119.391068, 26.056358, "🌇", "下院到观景台高德按盘山公路测得约9.39公里／20分钟（驾车，不是景交班次）；景交候车和上山留35–55分钟。", "约17:12日落，17:30左右开始下山，按当天班次候车。"],
+['sat',"19:15–20:45", "达明美食街 · 晚餐", 119.295582, 26.088868, "🍢", "景交下到鼓山下院后，2号线往苏洋到前屿，换4号线往半洲到东街口，再去达明。高德约11.99公里／45分钟，含步行约870米。另留景交下山和进站时间。", "预计19:15–19:45开吃。达明回香格里拉打车约3.19公里／15分钟，含接驾留20–30分钟。"],
+['sun',"09:30–09:50", "福州香格里拉 · 退房", 119.306145, 26.074321, "🎒", "退房、取包留10–20分钟。轻装就直接去西湖。", "如需先放大箱：从南门兜乘1号线往三江口5站到白湖亭，再去全季放箱；全季到上下杭打车约5.30公里／17分钟，含接驾留25–35分钟。放掉西湖游船。"],
+['sun',"10:10–11:30", "西湖公园 · 游船一码头", 119.28944, 26.091808, "🌳", "香格里拉到西湖一码头打车约5.55公里／19分钟，含接驾留25–35分钟；1路公交约3.43公里／33分钟。", "只有确认当天西湖→黎明湖单程船且有票才坐。11:30还没上船就直接打车去上下杭。"],
+['sun',"12:00–16:30", "上下杭历史文化街区", 119.304687, 26.052103, "🏘", "从西湖打车到上下杭约6.57公里／23分钟，含接驾留30–40分钟。若坐船，黎明湖下船后打车到上下杭约3.06公里／15分钟，含接驾留20–30分钟。", "不坐船约12:00–12:15开始午饭；坐船按下船时间顺延。午饭后逛三通桥、三捷河和会馆。"],
+['sun',"17:00–18:30", "全季酒店（福州白湖亭地铁站店）", 119.332929, 26.026476, "🏨", "从上下杭打车回白湖亭全季，高德约6.64公里／21分钟，含接驾留30–40分钟。", "到全季取箱、办理入住留15–25分钟，再到附近吃饭；想在上下杭吃晚饭也可以吃完再回来。"],
+['thu',"09:55–10:10", "全季白湖亭 · 出发", 119.332929, 26.026476, "🏨", "退房留15分钟，10:10左右从酒店出发。1号线往三江口7站到福州火车南站，高德约8.57公里／30分钟，含步行635米。", "另留候车、找铁路进站层及安检的时间，11:00前到铁路进站口。"],
+['thu',"11:00–12:00", "福州南站 · 返深", 119.391728, 25.986348, "🚄", "12:00发车回深圳，具体以票面为准。", "通过安检后找检票口，有空再买午饭带上车。"],
+];
+// 美食 [grp, name, lng, lat, addr, cost, rating, note]
+const food=[
+// 三坊七巷·东街口·达明
+['sfq','朱紫坊蹄膀·福州菜(三坊七巷店)',119.298001,26.080162,'吉庇路85-3号','45','4.5','性价比ok；一人点半份蹄膀饭'],
+['sfq','朱富贵火锅(三坊七巷店)',119.300316,26.084255,'大洋百货5层(东街口)','106','4.8','提前线上排队；👥多人，一人不推荐'],
+['dm','永安风味小吃(通湖路店)',119.291738,26.086692,'通湖路129号','79','4.6','一人友好'],
+['sfq','叶家花生汤',119.301141,26.084443,'八一七北路133号大洋百货后侧','11','4.6','花生汤甜品'],
+['dm','唐沫茶兮(达明路)',119.296464,26.085936,'杨桥东路26号，东街口B口340米','14','4.6','本土限定奶茶'],
+['sfq','林记沙茶面(东泰店)',119.303024,26.083250,'东泰路碧玉花园170号','23','4.7','一人友好'],
+['sfq','安泰社区食堂(军门社区店)',119.303171,26.082186,'东泰路262号','72','4.6','乌拉拉推荐；社区食堂一人友好'],
+['sfq','崔酱炸鸡(东街店)',119.300543,26.087313,'贤南路36-2号，东街口A口150米','39','4.7','浪味仙；一人炸鸡可'],
+['sfq','半天堂姜母鸭(井大路店)',119.303311,26.092167,'井大路209号','84','4.7','福建老菜馆'],
+['sfq','正宗闽北建瓯扁肉(凤鸣公寓店)',119.300329,26.087219,'贤南路34-1号','23','4.6','一人扁肉'],
+['sfq','虽不起眼牛肉(卫前街店)',119.302405,26.088542,'卫前街66-68号','55','4.6','一人牛肉馆可'],
+['dm','凤娇小吃店(北大路)',119.293245,26.096175,'北大路52号北大新村','36','4.7','提早去；一人小吃'],
+['sfq','甘草芭乐(澳门路店)',119.297874,26.078587,'林则徐纪念馆东门旁，南门兜L口400米','20','4.2','新鲜料足；酒店旁边走边吃'],
+['dm','饼夫人',119.295093,26.089056,'鼓西路142号','14','4.7','3r芋泥饼；边走边吃'],
+['dm','鸡动马达(达明美食街店)',119.295959,26.086460,'达明路20-1号','20','4.0','三合一；一人友好'],
+['dm','尚干玲记拌面扁肉(锦绣华庭店)',119.296397,26.089255,'鼓西路92号','24','4.6','一人拌面扁肉'],
+['sfq','同利肉燕老铺(三坊七巷店)',119.296545,26.083513,'南后街98号','24','4.6','三坊七巷午饭候选'],
+['sfq','古蒸燕',119.296779,26.082528,'南后街80号','28','4.5','肉燕创新吃法'],
+['sfq','永和鱼丸(三坊七巷店)',119.296642,26.083762,'南后街89号','25','4.5','与肉燕二选一'],
+['dm','我们的炸鸡(三坊七巷店)',119.295459,26.088459,'达明路160号','40','4.6','一人炸鸡可'],
+['sfq','哇哈冰饭',119.300426,26.082691,'八一七北路98号瑞丰楼','13','4.3','只能打包带走'],
+['sfq','椿野糖水(卫前街店)',119.301288,26.088176,'卫前街138号，东街口A口310米','26','4.6','一人糖水'],
+['sfq','糖潮糖水铺(省府店)',119.297037,26.087140,'省府路68号，东街口B口250米','28','4.6','大表哥推荐；一人糖水'],
+['sfq','乡烟起·闽北菜(东街口店)',119.297578,26.087007,'省府路17号','88','4.6','👥多人'],
+['dm','丰烟起·粥底火锅(东街口店)',119.293271,26.088067,'鼓西路225号','82','4.7','海鲜粥鲜；一人半份'],
+['sfq','李山山茶事(三坊七巷店)',119.297186,26.079963,'光禄坊5号','15','4.5','本土茶饮'],
+['sfq','南马唐·鲜作闽南菜(三坊七巷店)',119.298813,26.080559,'南后街139号内','118','4.5','👥多人'],
+// 上下杭·达道·茶亭
+['sxh','破店·非遗蹄膀·佛跳墙(上下杭店)',119.307885,26.052503,'利发巷69号','57','4.6','上下杭午饭候选'],
+['sxh','老福洲(上下杭店)',119.305559,26.050242,'隆平路星河巷1号','97','4.5','午市10:30-14:00；👥多人正餐'],
+['sxh','欣如家闽菜馆(上下杭)',119.306183,26.050277,'法师亭36号','74','4.5','午市10:00-14:00；👥多人正餐'],
+['sxh','惠民福州捞化(怡丰小区店)',119.307271,26.055195,'上杭路22号，达道C口440米','24','4.4','轻食；一人友好'],
+['sxh','阿信鲜捞(广达路店)',119.309228,26.058179,'广达路411号，达道A口70米','28','4.7','汤很鲜；一人捞化首选'],
+['sxh','耳聋伯元宵店(中亭街店)',119.310115,26.054819,'君临天华D区','13','4.6','一人友好'],
+['sxh','柴火锅边',119.303062,26.058743,'洋中路文景苑196号','10','4.6','一人锅边首选'],
+['sxh','达道牛肉(南门店)',119.301119,26.075867,'乌山路35号茂泰大楼F1','26','4.3','一人牛肉滑友好'],
+['sxh','鑫福屿阿辉捞化(群众店)',119.305590,26.069271,'群众路68号，茶亭A口60米','36','4.5','便宜好吃；一人捞化'],
+['sxh','福屿伟榕捞化',119.283233,26.075803,'福二路26号','39','4.8','陈赫推荐；一人捞化'],
+['sxh','升记猪杂粥觅味馆',119.287231,26.070595,'黎明兴园路220号','72','4.7','西禅寺旁；一人粥友好'],
+// 烟台山
+['yts','迈村泰国菜x烟台山',119.308318,26.043560,'仓前路229号','95','4.7',''],
+['yts','公园路甜汤',119.318890,26.040058,'福州外国语学校西南门旁','8','4.6','5r一碗'],
+['yts','松花堂寿司(振兴花园店)',119.314034,26.042214,'进步路12号','22','4.6','便宜好吃；一人寿司'],
+['yts','美雪食堂',119.313501,26.042372,'麦园路90号','24','3.9','一人食堂'],
+['yts','禧汕·潮汕美食集合店(烟台山旗舰店)',119.313447,26.045876,'仓前路M28号2楼','92','4.6','👥集合店多人'],
+['yts','春一茶室(春一茶事·大梦悦读)',119.310205,26.043319,'亭下路67-69号','54','4.7','环境很美；一人喝茶友好'],
+['yts','赖姨香肠',119.317394,26.043048,'立新路13号，上藤B口410米','7','4.4','边走边吃'],
+['yts','最闽·江景福建菜(烟台山码头店)',119.309745,26.044395,'仓前路150号','120','4.6','江景位；👥多人'],
+// 仓山
+['cs','倔爷烤肉(大榕树创意园)',119.262281,26.056938,'金达路109号','101','4.6','品质好；一人烤肉可'],
+['cs','倔爷烤肉(万象九宜城)',119.290605,26.064002,'西环中路691号5F','75','4.5','离市区近；一人烤肉可'],
+['cs','菌菇爷(野生菌火锅·仓山万达店)',119.273875,26.035875,'浦上大道276号万达A区3层','95','4.5','汤鲜；👥多人'],
+['cs','李不白水煮蛙(欢乐颂店)',119.268074,26.033541,'浦上大道306号L1','77','4.7','👥多人'],
+['cs','东档主·至味闽东(福屿店)',119.282083,26.073761,'福屿后路58号','110','4.7','黄鱼；👥多人'],
+['cs','渔傅·霞浦海鲜(五一南路店)',119.314100,26.058368,'五一南路215号','108','4.7','👥小海鲜多人'],
+// 晋安·台江
+['ja','紫阳海鲜楼(长乐路总店)',119.326982,26.081930,'福新中路与长乐北路口','112','4.7','👥多人聚餐'],
+['ja','王庄阿咪海鲜大排档(象园店)',119.328343,26.065887,'长乐中路296号','101','4.7','👥排档多人'],
+['ja','王庄十八年拉面(兴元小区店)',119.328704,26.070123,'长乐中路157号','22','4.6',''],
+['ja','王庄杂粮饼(兴元小区店)',119.328674,26.070112,'长乐中路157号兴元小区','11','4.5',''],
+['ja','杨记牛肉馆(世欧王庄店)',119.328196,26.067114,'王庄新村四区54座','32','4.5',''],
+['ja','兴仙饭店·闽味海鲜(得贵路M17店)',119.312634,26.084502,'得贵路26号M17文化广场4层，东门站C口548米','100','4.7','闽味海鲜；👥多人'],
+['ja','渔如意·三秒烫斑鱼·火锅(福新总店)',119.323708,26.080822,'福新中路85号','96','4.7','👥火锅多人'],
+['ja','大象沸腾鱼·龙窟山饮食店(西凤路)',119.325334,26.123307,'西凤路24号','70','4.7','较远；👥多人顺路'],
+['ja','郑爽爽冰饭(阳光城悠澜郡店)',119.329671,26.057246,'阳光悠澜郡二区','40','4.7','一人冰饭可'],
+['ja','正宗福鼎阿胖QQ肉片(尾垱街)',119.319387,26.055065,'尾垱街23-34号','19','4.6','一人肉片友好'],
+['ja','没牙伯花生汤店(老药洲街)',119.319241,26.057278,'老药洲街182号','16','4.7','花生汤5r；一人友好'],
+// 远端
+['cs','肉仓焼肉バー(万科里店)',119.260958,26.040066,'金山万科里负一楼','110','4.6','烧肉；一人烤肉可(高德新核实)'],
+['far','长乐饭冰冰(总店)',119.505706,25.957984,'长乐区郑和地铁站D口190米','38','4.7','无限续冰；在长乐，专程不值'],
+];
+function foodEmoji(n){
+  const rules=[
+   ['烧肉','🥩'],['鸡动马达','🍗'],['档主','🐟'],['饭冰','🍧'],['福洲','🍲'],['烤肉','🥩'],['蹄膀','🍖'],['肉燕','🥟'],['蒸燕','🥟'],['扁肉','🥟'],['鱼丸','🐟'],['捞化','🍜'],['鲜捞','🍜'],['沙茶面','🍜'],['拌面','🍜'],['拉面','🍜'],['肉片','🍜'],['锅边','🥣'],['花生汤','🥜'],['甜汤','🍮'],['糖水','🍮'],['冰饭','🍧'],['元宵','🏮'],['炸鸡','🍗'],['香肠','🌭'],['芋泥饼','🥞'],['杂粮饼','🥞'],['寿司','🍣'],['茶兮','🧋'],['茶事','🍵'],['茶室','🍵'],['芭乐','🥤'],['火锅','🍲'],['水煮蛙','🐸'],['粥','🥘'],['黄鱼','🐟'],['海鲜','🦐'],['渔','🦐'],['斑鱼','🐟'],['沸腾鱼','🐟'],['牛肉','🐂'],['牛','🐂'],['猪杂','🐖'],['菌','🍄'],['泰国','🍛'],['潮汕','🍲'],['食堂','🍱'],['社区','🍱'],['小吃','🍢'],['煎包','🥘'],['姜母鸭','🦆'],['闽菜','🍲'],['福建菜','🍲'],['闽南菜','🍲'],['福州菜','🍲'],['土菜','🍲'],['捞','🍜'],['燕','🥟'],['汤','🥣'],['饭','🍚'],['面','🍜'],['鸭','🦆'],['虾','🦐'],['鱼','🐟'],['茶','🍵'],['糖','🍮'],['饼','🥞'],['肉','🍖']
+  ];
+  for(const [k,e] of rules){if(n.includes(k))return e}
+  return '🍽️';
+}
+
+const grpColor={sfq:'#E46C45',dm:'#A0522D',sxh:'#D4A017',yts:'#5B8DEF',cs:'#9B59B6',ja:'#16A085',far:'#7F8C8D'};
+const grpName={sfq:'三坊七巷·东街口（周六上午/午饭时选）',dm:'达明·鼓西（周六晚餐宵夜时选）',sxh:'上下杭·达道（周日午饭时选）',yts:'烟台山（备选日午饭时选）',cs:'仓山（本次不经过，收藏备用）',ja:'晋安·台江（本次不经过，收藏备用）',far:'远端（专程才到，收藏备用）'};
+// 路线段 [day, key, color, dash, 标签]
+const segs=[
+['sat','sat_bus1','#E46C45',null,'🚌 128路｜车程约20分钟'],
+['sat','sat_metro1','#E46C45',null,'🚇 2号线6站 14分钟 / 3元'],
+];
+// 高德实测路径几何（步行/公交/地铁/驾车 API）
+const PATHS={"sat_bus1":[[119.296631,26.081936],[119.298073,26.082447],[119.299889,26.082943],[119.299263,26.085373],[119.299095,26.085339],[119.299011,26.085712],[119.299309,26.085764],[119.299263,26.085958],[119.298688,26.085842],[119.295285,26.085564],[119.288864,26.084503],[119.2875,26.084051],[119.27271,26.078389],[119.273514,26.078667],[119.273613,26.078442],[119.274178,26.078663],[119.276337,26.074409],[119.277336,26.072357],[119.275932,26.071861]],"sat_metro1":[[119.303745,26.076251],[119.309298,26.076297],[119.318054,26.076521],[119.322655,26.076401],[119.325508,26.076771],[119.326247,26.076642],[119.334017,26.074457],[119.342245,26.074203],[119.348216,26.0732],[119.352255,26.072087],[119.357721,26.070147],[119.358376,26.069845],[119.358975,26.069484],[119.366823,26.063815],[119.367712,26.06336],[119.36965,26.062671],[119.370737,26.062073],[119.371206,26.061641],[119.371526,26.061145],[119.372937,26.058098],[119.374344,26.055616],[119.374841,26.054299],[119.375122,26.052956],[119.375778,26.053047],[119.375801,26.052935]]};
+// 段端点兜底
+const ENDPTS={fri_taxi:[119.391728,25.986348,119.302902,26.072947],sat_w1:[119.302902,26.072947,119.296623,26.081958],sat_bus1:[119.296623,26.081958,119.276006,26.071711],sat_bus2:[119.276006,26.071711,119.302902,26.072947],sat_metro1:[119.303745,26.076251,119.375873,26.052939],sat_mtn:[119.375873,26.052939,119.395698,26.052952],sat_metro2:[119.375873,26.052939,119.303745,26.076251],sat_w2:[119.303745,26.076251,119.295582,26.088868],sun_bus1:[119.302902,26.072947,119.289440,26.091808],sun_ferry:[119.289440,26.091808,119.297607,26.071706],sun_metro1:[119.297607,26.071706,119.309855,26.056982],sun_w1:[119.304687,26.052103,119.309855,26.056982],sun_metro2:[119.309855,26.056982,119.391728,25.986348],alt_metro1:[119.303745,26.076251,119.316333,26.044733],alt_metro2:[119.316333,26.044733,119.391728,25.986348]};
+// 段详情（用于点击弹窗）
+const SEGINFO={
+ fri_taxi:{from:'福州南站',to:'酒店',mode:'🚕 打车(高德驾车实测轨迹)',line:'—',stops:'—',dur:'约25分钟',fare:'25-35元',walk:'无',src:'高德驾车路径实测'},
+ sat_w1:{from:'酒店',to:'三坊七巷',mode:'🚶 步行',line:'八一七中路→道山路→南后街',stops:'—',dur:'约20分钟(1.5km)',fare:'免费',walk:'即步行',src:'高德步行路径实测'},
+ sat_bus1:{from:'三坊七巷',to:'西禅古寺',mode:'🚌 公交128路',line:'128路',stops:'约7站',dur:'约20分钟',fare:'1元',walk:'起终点各短步行',src:'高德公交路径实测'},
+ sat_bus2:{from:'西禅古寺',to:'酒店',mode:'🚌 128路+步行',line:'128路原路+步行',stops:'约7站',dur:'约40分钟',fare:'1元',walk:'含换乘步行',src:'高德公交路径实测'},
+ sat_metro1:{from:'南门兜',to:'鼓山站',mode:'🚇 地铁2号线',line:'2号线 往洋里方向',stops:'6站(水部→紫阳→五里亭→前屿→上洋→鼓山)',dur:'约14分钟',fare:'约3元',walk:'A口出步行5分钟到景区',src:'高德地铁线路实测'},
+ sat_mtn:{from:'下院游客中心',to:'灵源洞',mode:'🚌 景交大巴(沿盘山公路)',line:'景区公交专线1',stops:'—',dur:'约20-30分钟',fare:'约10元',walk:'无',src:'高德驾车路径实测(景区道路)'},
+ sat_metro2:{from:'鼓山站',to:'南门兜',mode:'🚌大巴下山+🚇 2号线',line:'2号线 往苏洋方向',stops:'6站',dur:'约50分钟(含下山)',fare:'大巴10元+地铁3元',walk:'含接驳步行',src:'高德地铁线路实测'},
+ sat_w2:{from:'南门兜',to:'达明美食街',mode:'🚶 步行',line:'东街口方向',stops:'—',dur:'约16分钟(1.2km)',fare:'免费',walk:'即步行',src:'高德步行路径实测'},
+ sun_bus1:{from:'酒店(南门)',to:'西湖公园',mode:'🚌 公交1/54/66路',line:'「南门」→「西湖」',stops:'约6站',dur:'约15分钟',fare:'1元',walk:'酒店步行300米上车',src:'高德公交路径实测'},
+ sun_ferry:{from:'西湖公园游船一码头',to:'东西河游船黎明湖码头',mode:'⛴ 东西河航线',line:'西湖公园码头→白马河西水关码头→黎明湖码头',stops:'2个中途码头',dur:'约35分钟',fare:'待现场确认',walk:'无',src:'⚠️按用户路线截图整理，高德无游船水路导航轨迹，以现场为准'},
+ sun_metro1:{from:'西洋站(黎明湖码头旁)',to:'达道站',mode:'🚇 2号线1站+1号线2站',line:'2号线(西洋→南门兜)换1号线(南门兜→茶亭→达道)',stops:'共3站',dur:'约20分钟',fare:'约3元',walk:'码头A口进站即换乘',src:'站点坐标=高德实测；站间为示意连线'},
+ sun_w1:{from:'达道站C口',to:'上下杭',mode:'🚶 步行',line:'达道路→下杭路',stops:'—',dur:'约7分钟(470m)',fare:'免费',walk:'即步行',src:'高德步行路径实测'},
+ sun_metro2:{from:'达道',to:'福州火车南站',mode:'🚇 地铁1号线',line:'1号线 往三江口方向',stops:'10站(上藤→三叉街→白湖亭→葫芦阵→黄山→排下→城门→三角埕→胪雷→福州火车南站)',dur:'约22分钟',fare:'约4元',walk:'出站步行10分钟进高铁站',src:'高德地铁线路实测'},
+ alt_metro1:{from:'南门兜',to:'烟台山',mode:'🚇 1号线3站+步行',line:'1号线 往三江口(茶亭→达道→上藤)',stops:'3站',dur:'约22分钟',fare:'2元',walk:'上藤站步行15分钟',src:'高德地铁线路实测'},
+ alt_metro2:{from:'烟台山(上藤站)',to:'福州火车南站',mode:'🚇 1号线',line:'1号线 往三江口方向',stops:'9站',dur:'约21分钟',fare:'约4元',walk:'含进出站步行',src:'高德地铁线路实测'},
+};
+// 游船三码头（高德POI核实）+ 按用户截图整理的水道走向
+const DOCKS=[
+ ['福州西湖公园游船一码头',119.289440,26.091808,'B0FFK8E75U','湖滨路71号西湖公园内'],
+ ['白马河西水关码头',119.289115,26.083990,'B0I637Y073','白马北路104号'],
+ ['东西河游船黎明湖码头',119.297607,26.071706,'B0IBALUAAX','黎明湖公园西洋地铁站A出入口'],
+];
+// 水道走向：西湖码头→沿白马河向南→西水关→继续向南→河口转东南/东→黎明湖（截图整理，非高德实测）
+const FERRY_PATH=[[119.289440,26.091808],[119.289300,26.089500],[119.289150,26.086800],[119.289115,26.083990],[119.289400,26.081500],[119.290300,26.078800],[119.292200,26.076300],[119.294500,26.074200],[119.296300,26.072700],[119.297607,26.071706]];
+const missFood=['芝城粿然好'];
+
+if(typeof L==='undefined'){
+  document.getElementById('offline').style.display='block';
+  document.getElementById('side').style.cssText='width:100%;max-width:none;height:100dvh;overflow:auto;display:block';
+  document.getElementById('map').style.display='none';
+  document.getElementById('sideToggle').style.display='none';
+}
+const map=L.map('map',{zoomControl:true}).setView([26.065,119.32],13);
+L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',{subdomains:['1','2','3','4'],maxZoom:19,attribution:'© 高德地图'}).addTo(map);
+
+function amapUri(lng,lat,name){return `https://uri.amap.com/marker?position=${lng},${lat}&name=${encodeURIComponent(name)}&src=web&coordinate=gaode`}
+function amapNav(lng,lat,name){return `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(name)}&mode=bus&src=web&coordinate=gaode`}
+function amapNav2(k){const s=SEGINFO[k];const e=ENDPTS[k];return `https://uri.amap.com/navigation?from=${e[0]},${e[1]},${encodeURIComponent(s.from)}&to=${e[2]},${e[3]},${encodeURIComponent(s.to)}&mode=${k==='fri_taxi'?'car':(k==='sat_mtn'?'car':'bus')}&src=web&coordinate=gaode`}
+
+const dayColor={fri:'#C0392B',sat:'#E46C45',sun:'#2BA245',alt:'#5B8DEF',thu:'#8051A1'};
+const KEYWARN=['下院游客中心','游船一码头','全季白湖亭 · 出发','福州南站 · 返深'];
+const routeG={},foodG={},segG={},segLblG={},dockG=L.layerGroup(),ferryG=L.layerGroup();
+const routeMarkers=[],foodMarkers=[];
+let DONE=JSON.parse(localStorage.getItem('fz_done_20261116')||'[]');
+function doneKey(r){return r[0]+'|'+r[2]}
+
+route.forEach((r,i)=>{
+  const [d,t,n,lng,lat,e,info,tip]=r;
+  if(!routeG[d])routeG[d]=L.layerGroup();
+  const mk=()=>{
+    const done=DONE.includes(doneKey(r));
+    const html=`<div class="${done?'':''}" style="position:relative;background:${done?'#cfd8d3':'#fff'};border:2px solid ${done?'#8aa39d':dayColor[d]};border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 1px 4px rgba(0,0,0,.3)">${done?'✔':e}</div>`;
+    return L.divIcon({className:'',html,iconSize:[30,30],iconAnchor:[15,15]});
+  };
+  const m=L.marker([lat,lng],{icon:mk()}).addTo(routeG[d]);
+  m.bindPopup(`<div class="pp"><b>${t} ${n}</b><div class="row">${info}</div>${tip?`<div class="row tagline">💡 ${tip}</div>`:''}<a href="${amapUri(lng,lat,n)}" target="_blank">高德打开</a><a class="nav" href="${amapNav(lng,lat,n)}" target="_blank">高德导航</a></div>`);
+  m.bindTooltip(t+' '+n.replace(/^[⏰🌇🧳🚌🚇]/,''),{permanent:true,direction:'right',offset:[16,0],className:'namelbl'});
+  m._r=r;m._mk=mk;routeMarkers.push(m);
+});
+
+food.forEach((f,i)=>{
+  const [g,n,lng,lat,addr,cost,rate,note]=f;
+  if(!foodG[g])foodG[g]=L.layerGroup();
+  const icon=L.divIcon({className:'',html:`<div style="background:#fff;border:2px solid ${grpColor[g]};border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 1px 3px rgba(0,0,0,.25)">${foodEmoji(n)}</div>`,iconSize:[26,26],iconAnchor:[13,13]});
+  const m=L.marker([lat,lng],{icon}).addTo(foodG[g]);
+  const info=[addr&&('📍 '+addr),cost&&cost!=='[]'&&('人均 ¥'+cost),rate&&rate!=='[]'&&('高德评分 '+rate),note&&('💡 '+note)].filter(Boolean).join('｜');
+  m.bindPopup(`<div class="pp"><b>${foodEmoji(n)} ${n}</b><div class="row">${info}</div><a href="${amapUri(lng,lat,n)}" target="_blank">高德打开</a><a class="nav" href="${amapNav(lng,lat,n)}" target="_blank">高德导航</a></div>`);
+  m.bindTooltip(foodEmoji(n)+' '+n,{permanent:true,direction:'right',offset:[14,0],className:'namelbl'});
+  m._f=f;foodMarkers.push(m);
+});
+
+// 游船图层
+DOCKS.forEach(d=>{
+  const [n,lng,lat,id,addr]=d;
+  const icon=L.divIcon({className:'',html:`<div style="background:#fff;border:2px solid #1E90FF;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 1px 4px rgba(0,0,0,.3)">⛴</div>`,iconSize:[28,28],iconAnchor:[14,14]});
+  const m=L.marker([lat,lng],{icon}).addTo(dockG);
+  m.bindPopup(`<div class="pp"><b>⛴ ${n}</b><div class="row">📍 ${addr}｜高德POI ${id}</div><div class="row tagline">码头位置经高德确认；航线轨迹按用户截图整理，以现场为准</div><a href="${amapUri(lng,lat,n)}" target="_blank">高德打开</a><a class="nav" href="${amapNav(lng,lat,n)}" target="_blank">高德导航</a></div>`);
+  m.bindTooltip('⛴ '+n,{permanent:true,direction:'right',offset:[15,0],className:'namelbl'});
+});
+const ferryLine=L.polyline(FERRY_PATH.map(p=>[p[1],p[0]]),{color:'#1E90FF',weight:4,opacity:.9,dashArray:'2,9',lineCap:'round'}).addTo(ferryG);
+ferryLine.bindPopup(`<div class="pp"><b>⛴ 东西河航线</b><div class="row">西湖公园码头→西水关码头→黎明湖码头｜约35分钟｜票价待现场确认</div><div class="row tagline">⚠️码头为高德POI；中间轨迹按用户路线截图整理，高德无游船水路导航，具体航线以现场为准</div><a class="nav" href="${amapNav(DOCKS[0][1],DOCKS[0][2],DOCKS[0][0])}" target="_blank">高德导航到起点码头</a></div>`);
+const ferryMid=L.marker([26.0788,119.2903],{icon:L.divIcon({className:'',html:`<div class="seglbl" style="border-color:#1E90FF;color:#155a85">⛴ 东西河航线｜约35分钟｜截图整理·待现场确认</div>`,iconSize:null,iconAnchor:[110,12]}),interactive:false}).addTo(ferryG);
+
+// 陆路段（真实几何）+ 点击详情
+segs.forEach(s=>{
+  const [d,key,color,dash,label]=s;
+  if(key==='sun_ferry')return; // 游船单独图层
+  if(!segG[d])segG[d]=L.layerGroup();if(!segLblG[d])segLblG[d]=L.layerGroup();
+  const ep=ENDPTS[key];
+  let latlngs=(PATHS[key]||[]).map(pt=>[pt[1],pt[0]]);
+  if(latlngs.length<2&&ep) latlngs=[[ep[1],ep[0]],[ep[3],ep[2]]];
+  if(latlngs.length<2)return;
+  const pl=L.polyline(latlngs,{color,weight:d==='fri'?4:3,opacity:.9,dashArray:dash}).addTo(segG[d]);
+  const si=SEGINFO[key];
+  if(si){
+    pl.bindPopup(`<div class="pp"><b>${si.mode}</b><div class="row">🟢 ${si.from} → ${si.to}</div><div class="row">线路：${si.line}｜站数：${si.stops}</div><div class="row">耗时：${si.dur}｜票价：${si.fare}</div><div class="row">换乘步行：${si.walk}</div><div class="row tagline">数据来源：${si.src}</div><a class="nav" href="${amapNav2(key)}" target="_blank">高德导航(含起终点)</a></div>`);
+    pl.on('click',function(){this.openPopup()});
+  }
+  const mid=latlngs[Math.floor(latlngs.length/2)];
+  const lb=L.marker(mid,{icon:L.divIcon({className:'',html:`<div class="seglbl">${label}</div>`,iconSize:null,iconAnchor:[55,12]}),interactive:false}).addTo(segLblG[d]);
+});
+
+// 聚合簇
+const clusterG={};
+Object.keys(grpColor).forEach(g=>{
+  const fs=food.filter(f=>f[0]===g);
+  if(!fs.length)return;
+  const cx=fs.reduce((s,f)=>s+f[2],0)/fs.length, cy=fs.reduce((s,f)=>s+f[3],0)/fs.length;
+  const cnt=fs.length;
+  const icon=L.divIcon({className:'',html:`<div class="cluster" style="background:${grpColor[g]}">${grpName[g].split('（')[0]} ${cnt}家美食</div>`,iconSize:null,iconAnchor:[45,14]});
+  const m=L.marker([cy,cx],{icon}).addTo(clusterG[g]=L.layerGroup());
+  m.on('click',()=>map.setView([cy,cx],15));
+});
+
+// ---------- 状态 ----------
+let curDay='all';const curCat={route:true,food:true,ferry:false};const curGrp={sfq:true,dm:true,sxh:true,yts:true,cs:true,ja:true,far:true};
+let query='';
+function dayOk(d){return curDay==='all'||curDay===d||(curDay==='sun'&&d==='alt')}
+function matchQ(s){return !query||s.toLowerCase().includes(query)}
+
+function refresh(){
+  const z=map.getZoom();
+  const searching=!!query;
+  Object.entries(routeG).forEach(([k,g])=>{
+    let show=dayOk(k)&&curCat.route;
+    if(searching)show=curCat.route&&routeMarkers.some(m=>m._r[0]===k&&matchQ(m._r[2]+m._r[6]+m._r[1]));
+    if(show)map.addLayer(g);else map.removeLayer(g);
+  });
+  routeMarkers.forEach(m=>{
+    const inDay=dayOk(m._r[0])&&curCat.route;
+    const hit=searching&&matchQ(m._r[2]+m._r[6]+m._r[1]);
+    const vis=searching?hit:inDay;
+    const el=m.getElement();if(!el)return;
+    el.style.display=vis?'':'none';
+    if(vis&&z>=14&&!m.isTooltipOpen())m.openTooltip();else if(vis&&z<14)m.closeTooltip();
+    if(!vis)m.closeTooltip();
+  });
+  Object.entries(segG).forEach(([k,g])=>{if(dayOk(k)&&curCat.route&&!searching)map.addLayer(g);else map.removeLayer(g)});
+  Object.entries(segLblG).forEach(([k,g])=>{if(dayOk(k)&&curCat.route&&!searching&&z>=12)map.addLayer(g);else map.removeLayer(g)});
+  if(curCat.ferry&&!searching&&dayOk('sun')){map.addLayer(ferryG);map.addLayer(dockG);}else{map.removeLayer(ferryG);map.removeLayer(dockG);}
+  if(searching&&matchQ('码头 游船 东西河 西湖 黎明湖 白马河'.split(' ').join(''))){}
+  // 美食：不受日期影响
+  Object.keys(grpColor).forEach(g=>{
+    const grpOn=curCat.food&&curGrp[g];
+    const useCluster=!searching&&z<14;
+    if(clusterG[g]){if(grpOn&&useCluster)map.addLayer(clusterG[g]);else map.removeLayer(clusterG[g]);}
+    if(foodG[g]){if(grpOn&&!useCluster)map.addLayer(foodG[g]);else map.removeLayer(foodG[g]);}
+  });
+  foodMarkers.forEach(m=>{
+    const el=m.getElement();if(!el)return;
+    const grpOn=curCat.food&&curGrp[m._f[0]];
+    const hit=searching&&matchQ(m._f[1]+m._f[4]+(m._f[7]||'')+grpName[m._f[0]]);
+    const vis=searching?(grpOn&&hit):(grpOn&&z>=14);
+    el.style.display=vis?'':'none';
+    if(vis&&z>=15&&!m.isTooltipOpen())m.openTooltip();
+    if(!vis)m.closeTooltip();
+  });
+  applyNow();
+  renderList();
+}
+
+// ---------- 当前进度高亮 ----------
+const TRAVEL={'2026-11-16':'fri','2026-11-17':'sat','2026-11-18':'sun','2026-11-19':'thu'};
+function parseStart(t){const m=t.match(/(\d{1,2}):(\d{2})/);return m?(+m[1])*60+(+m[2]):null}
+function applyNow(){
+  routeMarkers.forEach(m=>{m._el0=null});
+  const now=new Date();
+  const ds=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const today=TRAVEL[ds];
+  const hint=document.getElementById('dateHint');
+  document.querySelectorAll('.nowbadge,.nextbadge').forEach(x=>x.remove());
+  routeMarkers.forEach(m=>{const el=m.getElement();if(el){const c=el.querySelector('div');if(c)c.classList.remove('nowring');}});
+  if(!today){hint.style.display='block';hint.textContent='📅 当前不在行程日期内（11/16–11/19）。用上方日期按钮查看各天行程。';return;}
+  hint.style.display='none';
+  const mins=now.getHours()*60+now.getMinutes();
+  const todays=route.map((r,i)=>({r,i})).filter(o=>o.r[0]===today&&parseStart(o.r[1])!==null).sort((a,b)=>parseStart(a.r[1])-parseStart(b.r[1]));
+  let cur=null,next=null;
+  todays.forEach((o,idx)=>{if(parseStart(o.r[1])<=mins)cur=o;});
+  if(cur){const ci=todays.indexOf(cur);next=todays[ci+1]||null;}
+  if(cur){const el=routeMarkers[cur.i].getElement();if(el){const c=el.querySelector('div');if(c)c.classList.add('nowring');}}
+  document.querySelectorAll('#list .item').forEach(el=>{
+    const i=+el.dataset.ri;if(isNaN(i))return;
+    if(cur&&i===cur.i)el.insertAdjacentHTML('beforeend','<span class="nowbadge">● 当前应到达</span>');
+    if(next&&i===next.i)el.insertAdjacentHTML('beforeend','<span class="nextbadge">→ 即将前往</span>');
+  });
+}
+
+// ---------- 列表 ----------
+function renderList(){
+  const list=document.getElementById('list');list.innerHTML='';
+  const searching=!!query;
+  if(curCat.route){
+    const secName={fri:'11/16 周一 · 东街口晚餐→烟台山夜游',sat:'11/17 周二 · 三坊七巷→西禅寺→鼓山日落',sun:'11/18 周三 · 西湖→上下杭→全季',thu:'11/19 周四 · 福州南返深'};
+    ['fri','sat','sun','thu'].forEach(d=>{
+      if(!dayOk(d))return;
+      const h=document.createElement('div');h.className='sec';h.textContent=secName[d];list.appendChild(h);
+      route.forEach((r,i)=>{
+        if(r[0]!==d)return;
+        if(searching&&!matchQ(r[2]+r[6]+r[1]))return;
+        const done=DONE.includes(doneKey(r));
+        const div=document.createElement('div');div.className='item '+r[0]+(done?' done':'');div.dataset.ri=i;
+        const warn=KEYWARN.some(w=>r[2].includes(w));
+        div.innerHTML=`<span class="donebox" data-di="${i}" title="标记已完成">${done?'✅':'⬜'}</span><span class="time">${r[1]}</span><b>${r[5]} ${r[2]}</b>${warn?'<span class="warnbadge">⚠️重点</span>':''}<div class="meta">${r[6]}</div>${r[7]?`<div class="meta">💡 ${r[7]}</div>`:''}<a class="amap" href="${amapUri(r[3],r[4],r[2])}" target="_blank" onclick="event.stopPropagation()">高德打开</a>`;
+        div.onclick=(ev)=>{if(ev.target.classList.contains('donebox'))return;map.setView([r[4],r[3]],16);routeMarkers[i].openPopup();};
+        list.appendChild(div);
+      });
+    });
+  }
+  if(curCat.food){
+    ['sfq','dm','sxh','yts','cs','ja','far'].forEach(g=>{
+      if(!curGrp[g])return;
+      const fs=food.map((f,i)=>({f,i})).filter(o=>o.f[0]===g&&(!searching||matchQ(o.f[1]+o.f[4]+(o.f[7]||''))));
+      if(!fs.length)return;
+      const h=document.createElement('div');h.className='sec';h.textContent='🍜 '+grpName[g]+`（${fs.length}家）`;list.appendChild(h);
+      fs.forEach(({f,i})=>{
+        const div=document.createElement('div');div.className='item food';
+        const meta=[f[4],f[5]&&'¥'+f[5],f[6]&&'⭐'+f[6],f[7]].filter(Boolean).join('｜');
+        div.innerHTML=`<b>${foodEmoji(f[1])} ${f[1]}</b><div class="meta">${meta}</div><a class="amap" href="${amapUri(f[2],f[3],f[1])}" target="_blank" onclick="event.stopPropagation()">高德打开</a>`;
+        div.onclick=()=>{map.setView([f[3],f[2]],17);foodMarkers[i].openPopup();};
+        list.appendChild(div);
+      });
+    });
+    if(!searching){
+      const h=document.createElement('div');h.className='sec';h.textContent='高德未收录（未上图）';list.appendChild(h);
+      missFood.forEach(n=>{const div=document.createElement('div');div.className='item miss';div.innerHTML=`<b>${n}</b><div class="meta">福州无此名餐饮POI（最接近：芝城故事·建瓯土菜/粿然好永泰特色食品）；肉仓已核实为"肉仓焼肉バー"并上图</div>`;list.appendChild(div);});
+    }
+  }
+  list.querySelectorAll('.donebox').forEach(el=>{
+    el.onclick=(ev)=>{
+      ev.stopPropagation();
+      const r=route[+el.dataset.di];const k=doneKey(r);
+      if(DONE.includes(k))DONE=DONE.filter(x=>x!==k);else DONE.push(k);
+      localStorage.setItem('fz_done_20261116',JSON.stringify(DONE));
+      routeMarkers.forEach(m=>m.setIcon(m._mk()));
+      refresh();
+    };
+  });
+}
+
+// ---------- 控件 ----------
+document.querySelectorAll('#days .chip').forEach(el=>{el.onclick=()=>{document.querySelectorAll('#days .chip').forEach(x=>x.classList.remove('on'));el.classList.add('on');curDay=el.dataset.d;refresh();
+  if(curDay!=='all'){const pts=route.filter(r=>r[0]===curDay||(curDay==='sun'&&r[0]==='alt')).map(r=>[r[4],r[3]]);if(pts.length)map.fitBounds(L.latLngBounds(pts).pad(.15));}
+  else map.setView([26.065,119.32],13);
+}});
+document.querySelectorAll('#cats .chip').forEach(el=>{el.onclick=()=>{el.classList.toggle('on');curCat[el.dataset.c]=el.classList.contains('on');refresh();}});
+document.querySelectorAll('#grps .chip').forEach(el=>{el.onclick=()=>{el.classList.toggle('on');curGrp[el.dataset.g]=el.classList.contains('on');refresh();}});
+document.getElementById('search').addEventListener('input',e=>{query=e.target.value.trim().toLowerCase();refresh();});
+document.getElementById('clearDone').onclick=()=>{DONE=[];localStorage.setItem('fz_done_20261116','[]');routeMarkers.forEach(m=>m.setIcon(m._mk()));refresh();};
+document.getElementById('sideToggle').onclick=()=>{document.getElementById('side').classList.toggle('collapsed');setTimeout(()=>map.invalidateSize(),300);};
+map.on('zoomend',refresh);
+refresh();
+</script>
+</body>
+</html>
