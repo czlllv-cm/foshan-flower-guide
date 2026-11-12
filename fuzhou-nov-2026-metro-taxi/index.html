@@ -68,6 +68,9 @@
 .bus-pin{display:inline-block;transform:translateX(-50%);white-space:nowrap;background:#137448;color:white;border:2px solid white;border-radius:10px;padding:2px 6px;font:700 12px/17px system-ui;box-shadow:0 1px 4px #0005}.bus-pin.off{background:#fff;color:#124a34;border-color:#137448}
 .stop-link{margin-left:4px;margin-top:4px}
 .luggage-guide{border-left-color:#795c22;background:#fff8e7}.luggage-guide .meta{margin:4px 0}
+#locPanel{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));z-index:1450;text-align:right;max-width:min(280px,70vw);pointer-events:none}
+#locPanel button{border:1px solid #a9c7bf;background:#fff;color:#174a40;border-radius:18px;min-height:36px;padding:6px 10px;box-shadow:0 1px 5px #0003;pointer-events:auto}
+#locStatus:not(:empty){background:#fffe;color:#174a40;border-radius:8px;padding:4px 8px;margin-top:5px;font-size:12px}
 </style>
 </head>
 <body>
@@ -106,6 +109,9 @@
     </div>
   </div>
   <div id="map"></div>
+  <div id="locPanel" hidden><button id="locBtn" type="button" aria-pressed="false">◎ 我的位置</button>
+  <button id="locCenter" type="button" hidden>回到我的位置</button>
+  <div id="locStatus" role="status" aria-live="polite"></div></div>
 </div>
 <button id="sideToggle">☰ 行程列表</button>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -486,6 +492,63 @@ document.getElementById('sideToggle').onclick=()=>{document.getElementById('side
 map.on('zoomend',refresh);
 const cnDate=new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 document.querySelector('#days [data-d="'+(TRAVEL[cnDate]||'fri')+'"]').click();
+const locBtn=document.getElementById('locBtn'),locStatus=document.getElementById('locStatus'),locCenter=document.getElementById('locCenter');
+document.getElementById('locPanel').hidden=false;
+const locationPane=map.createPane('locationPane');locationPane.style.zIndex='480';
+let watch=null,here=null,circle=null;
+function toGaode(lat,lng){
+ if(lng<72.004||lng>137.8347||lat<0.8293||lat>55.8271)return [lat,lng];
+ const x=lng-105,y=lat-35,p=Math.PI,a=6378245,ee=.006693421622965943;
+ const shared=(20*Math.sin(6*x*p)+20*Math.sin(2*x*p))*2/3;
+ let dl=-100+2*x+3*y+.2*y*y+.1*x*y+.2*Math.sqrt(Math.abs(x))+shared
+  +(20*Math.sin(y*p)+40*Math.sin(y*p/3))*2/3+(160*Math.sin(y*p/12)+320*Math.sin(y*p/30))*2/3;
+ let dn=300+x+2*y+.1*x*x+.1*x*y+.1*Math.sqrt(Math.abs(x))+shared
+  +(20*Math.sin(x*p)+40*Math.sin(x*p/3))*2/3+(150*Math.sin(x*p/12)+300*Math.sin(x*p/30))*2/3;
+ const r=lat*p/180,magic=1-ee*Math.sin(r)**2,sq=Math.sqrt(magic);
+ return [lat+dl*180/((a*(1-ee)/(magic*sq))*p),lng+dn*180/((a/sq)*Math.cos(r)*p)];
+}
+function stopLocation(){
+ if(watch!==null)navigator.geolocation.clearWatch(watch);
+ watch=null;
+ if(here){here.remove();here=null;}
+ if(circle){circle.remove();circle=null;}
+ locCenter.hidden=true;
+ locBtn.textContent='◎ 我的位置';locBtn.setAttribute('aria-pressed','false');
+}
+function startLocation(centerOnFirstFix=false){
+ if(watch!==null)return;
+ if(!window.isSecureContext||location.protocol==='file:'){
+  locStatus.textContent='请在 Safari 打开 HTTPS 网页后定位。';return;
+ }
+ if(!navigator.geolocation){locStatus.textContent='此浏览器无法定位。';return;}
+ locStatus.textContent='正在请求位置…';
+ locBtn.textContent='停止定位';locBtn.setAttribute('aria-pressed','true');
+ watch=navigator.geolocation.watchPosition(pos=>{
+  if(watch===null)return;
+  const xy=toGaode(pos.coords.latitude,pos.coords.longitude);
+  if(!here){
+   circle=L.circle(xy,{pane:'locationPane',radius:pos.coords.accuracy,color:'#1275ed',weight:1,fillOpacity:.12,interactive:false}).addTo(map);
+   here=L.circleMarker(xy,{pane:'locationPane',radius:8,color:'#fff',fillColor:'#1275ed',fillOpacity:1,weight:3}).addTo(map).bindTooltip('我的位置');
+   if(centerOnFirstFix)map.setView(xy,Math.max(15,map.getZoom()));
+   locCenter.hidden=false;
+  }else{here.setLatLng(xy);circle.setLatLng(xy).setRadius(pos.coords.accuracy);}
+  const msg='定位中 · 精度约 '+Math.round(pos.coords.accuracy)+' 米';
+  if(locStatus.textContent!==msg)locStatus.textContent=msg;
+ },err=>{
+  if(watch===null)return;
+  if(err.code===1){
+   stopLocation();locStatus.textContent='没有定位权限。可在 Safari 网站设置允许定位，再点「我的位置」。';
+  }else locStatus.textContent='暂未获取位置，可等候或停止后重试。';
+ },{enableHighAccuracy:true,timeout:15000,maximumAge:5000});
+}
+locBtn.onclick=()=>{
+ if(watch!==null){stopLocation();locStatus.textContent='已停止定位';}
+ else startLocation(true);
+};
+locCenter.onclick=()=>{if(here)map.setView(here.getLatLng(),Math.max(15,map.getZoom()));};
+window.addEventListener('pagehide',()=>{if(watch!==null)stopLocation();});
+if(window.isSecureContext&&location.protocol!=='file:')startLocation();
+
 </script>
 </body>
 </html>
